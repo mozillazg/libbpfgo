@@ -87,6 +87,8 @@ struct perf_buffer * init_perf_buf(int map_fd, int page_cnt, uintptr_t ctx)
     return pb;
 }
 */
+// PKG_CONFIG_PATH=/path/to/libbpf/src go get .
+// #cgo pkg-config: libelf zlib libbpf
 import "C"
 
 import (
