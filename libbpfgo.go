@@ -9,11 +9,10 @@ package libbpfgo
 #include <unistd.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <uapi/linux/bpf.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-#include <bpf/libbpf_common.h>
-
 
 int libbpf_print_fn(enum libbpf_print_level level,
                     const char *format,
@@ -124,7 +123,7 @@ int bpf_prog_detach_cgroup_legacy(
 
 struct bpf_link * bpf_prog_attach_iter(struct bpf_program *prog, __u32 map_fd)
 {
-	if (map_fd <= 0) {
+	if (map_fd == 0) {
 		return bpf_program__attach_iter(prog, NULL);
 	}
 
