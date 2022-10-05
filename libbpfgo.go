@@ -9,7 +9,6 @@ package libbpfgo
 #include <unistd.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
-#include <uapi/linux/bpf.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
