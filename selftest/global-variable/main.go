@@ -1,27 +1,23 @@
 package main
 
-import "C"
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
-	"syscall"
 	"time"
 	"unsafe"
 
 	bpf "github.com/aquasecurity/libbpfgo"
 )
 
+type GoRodata struct {
+	foo int64
+	bar int64
+	baz int64
+}
+
 func exitWithErr(err error) {
 	fmt.Fprintln(os.Stderr, err)
 	os.Exit(-1)
-}
-
-func initGlobalVariable(bpfModule *bpf.Module, sectionName string, value int) {
-	val := C.int(value)
-	if err := bpfModule.InitGlobalVariable(sectionName, unsafe.Pointer(&val)); err != nil {
-		exitWithErr(err)
-	}
 }
 
 func main() {
@@ -31,44 +27,20 @@ func main() {
 	}
 	defer bpfModule.Close()
 
-	initGlobalVariable(bpfModule, ".rodata", 1500)
-	initGlobalVariable(bpfModule, ".data", 500)
-	initGlobalVariable(bpfModule, ".rodata.baz", 10)
-	initGlobalVariable(bpfModule, ".rodata.qux", 8)
-	initGlobalVariable(bpfModule, ".data.quux", 2)
-	initGlobalVariable(bpfModule, ".data.quuz", 1)
+	rodataMap, err := bpfModule.GetMap("main.rodata") //TODO: should be able to iterate over maps to find instead of by name
+	if err != nil {
+		exitWithErr(err)
+	}
+
+	x := GoRodata{6, 443, 333}
+	err = rodataMap.SetROData(unsafe.Pointer(&x), unsafe.Sizeof(x))
+	if err != nil {
+		exitWithErr(err)
+	}
 
 	if err := bpfModule.BPFLoadObject(); err != nil {
 		exitWithErr(err)
 	}
 
-	prog, err := bpfModule.GetProgram("kprobe__sys_mmap")
-	if err != nil {
-		exitWithErr(err)
-	}
-
-	if _, err := prog.AttachKprobe("__x64_sys_mmap"); err != nil {
-		exitWithErr(err)
-	}
-
-	eventsChannel := make(chan []byte)
-	rb, err := bpfModule.InitRingBuf("events", eventsChannel)
-	if err != nil {
-		exitWithErr(err)
-	}
-
-	rb.Start()
-	go func() {
-		time.Sleep(time.Second)
-		syscall.Mmap(999, 999, 999, 1, 1)
-	}()
-
-	b := <-eventsChannel
-	if binary.LittleEndian.Uint32(b) != 2021 {
-		fmt.Fprintf(os.Stderr, "invalid data retrieved: %v\n", b)
-		os.Exit(-1)
-	}
-
-	rb.Stop()
-	rb.Close()
+	time.Sleep(time.Hour)
 }

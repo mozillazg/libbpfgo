@@ -1917,3 +1917,19 @@ func BPFProgramTypeIsSupported(progType BPFProgType) (bool, error) {
 	}
 	return cSupported == 1, nil
 }
+
+func (m *BPFMap) IsInternal() bool {
+	return bool(C.bpf_map__is_internal(m.bpfMap))
+}
+
+// SetROData
+func (m *BPFMap) SetROData(data unsafe.Pointer, size uintptr) error {
+	if !m.IsInternal() {
+		return fmt.Errorf("cannot set rodata for non internal map")
+	}
+	errC := C.bpf_map__set_initial_value(m.bpfMap, data, C.ulong(size))
+	if errC != 0 {
+		return fmt.Errorf("uh oh: %w\n", syscall.Errno(-errC))
+	}
+	return nil
+}
