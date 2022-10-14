@@ -1503,16 +1503,10 @@ func (p *BPFProg) AttachNetns(networkNamespacePath string) (*BPFLink, error) {
 
 type IterOpts struct {
 	MapFd int
-	// CgroupIterOrder BPFCgroupIterOrder
-	// CgroupFd        int
-	// cGroupId        uint64
 }
 
 func (p *BPFProg) AttachIter(opts IterOpts) (*BPFLink, error) {
 	mapFd := C.uint(opts.MapFd)
-	// cgroupIterOrder := C.uint(opts.CgroupIterOrder)
-	// cgroupFd := C.uint(opts.CgroupFd)
-	// cgroupId := C.ulonglong(opts.cGroupId)
 	link, errno := C.bpf_prog_attach_iter(p.prog, mapFd)
 	if link == nil {
 		return nil, fmt.Errorf("failed to attach iter to program %s: %w", p.name, errno)

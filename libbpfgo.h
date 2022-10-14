@@ -120,10 +120,6 @@ struct bpf_link *bpf_prog_attach_iter(struct bpf_program *prog, __u32 map_fd) {
   union bpf_iter_link_info linfo;
   memset(&linfo, 0, sizeof(linfo));
   linfo.map.map_fd = map_fd;
-  // upcoming libbpf v1.0.2 introduced a new member named 'cgroup'
-  // linfo.cgroup.order = order;
-  // linfo.cgroup.cgroup_fd = cgroup_fd;
-  // linfo.cgroup.cgroup_id = cgroup_id;
   opts.link_info = &linfo;
   opts.link_info_len = sizeof(linfo);
 
