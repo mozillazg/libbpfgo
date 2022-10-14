@@ -34,7 +34,7 @@ func main() {
 		exitWithErr(err)
 	}
 
-	link, err := prog.AttachIter(nil)
+	link, err := prog.AttachIter(bpf.IterOpts{})
 	if err != nil {
 		exitWithErr(err)
 	}

@@ -1490,20 +1490,35 @@ func (p *BPFProg) AttachNetns(networkNamespacePath string) (*BPFLink, error) {
 	return bpfLink, nil
 }
 
-func (p *BPFProg) AttachIter(bpfMap *BPFMap) (*BPFLink, error) {
-	var fd C.uint
-	if bpfMap != nil {
-		fd = C.uint(bpfMap.fd)
-	}
-	link, errno := C.bpf_prog_attach_iter(p.prog, fd)
+// BPFCgroupIterOrder is an enum as defined in https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/bpf.h
+// type BPFCgroupIterOrder uint32
+//
+// const (
+// 	BPFIterOrderUnspec BPFCgroupIterOrder = iota
+// 	BPFIterSelfOnly
+// 	BPFIterDescendantsPre
+// 	BPFIterDescendantsPost
+// 	BPFIterAncestorsUp
+// )
+
+type IterOpts struct {
+	MapFd int
+	// CgroupIterOrder BPFCgroupIterOrder
+	// CgroupFd        int
+	// cGroupId        uint64
+}
+
+func (p *BPFProg) AttachIter(opts IterOpts) (*BPFLink, error) {
+	mapFd := C.uint(opts.MapFd)
+	// cgroupIterOrder := C.uint(opts.CgroupIterOrder)
+	// cgroupFd := C.uint(opts.CgroupFd)
+	// cgroupId := C.ulonglong(opts.cGroupId)
+	link, errno := C.bpf_prog_attach_iter(p.prog, mapFd)
 	if link == nil {
 		return nil, fmt.Errorf("failed to attach iter to program %s: %w", p.name, errno)
 	}
 
-	eventName := fmt.Sprintf("iter-%s", p.name)
-	if bpfMap != nil {
-		eventName = fmt.Sprintf("%s-%s", eventName, bpfMap.name)
-	}
+	eventName := fmt.Sprintf("iter-%s-%d", p.name, opts.MapFd)
 	bpfLink := &BPFLink{
 		link:      link,
 		prog:      p,
