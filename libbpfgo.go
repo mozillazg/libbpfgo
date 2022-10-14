@@ -1490,17 +1490,6 @@ func (p *BPFProg) AttachNetns(networkNamespacePath string) (*BPFLink, error) {
 	return bpfLink, nil
 }
 
-// BPFCgroupIterOrder is an enum as defined in https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/bpf.h
-// type BPFCgroupIterOrder uint32
-//
-// const (
-// 	BPFIterOrderUnspec BPFCgroupIterOrder = iota
-// 	BPFIterSelfOnly
-// 	BPFIterDescendantsPre
-// 	BPFIterDescendantsPost
-// 	BPFIterAncestorsUp
-// )
-
 type IterOpts struct {
 	MapFd int
 }
