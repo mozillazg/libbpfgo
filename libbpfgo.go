@@ -7,7 +7,11 @@ package libbpfgo
 import "C"
 
 import (
+	"bytes"
+	"debug/elf"
+	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"path/filepath"
 	"strings"
@@ -42,6 +46,7 @@ type Module struct {
 	links    []*BPFLink
 	perfBufs []*PerfBuffer
 	ringBufs []*RingBuffer
+	elf      *elf.File
 }
 
 type BPFMap struct {
@@ -295,6 +300,10 @@ func SetStrictMode(mode LibbpfStrictMode) {
 }
 
 func NewModuleFromFileArgs(args NewModuleArgs) (*Module, error) {
+	f, err := elf.Open(args.BPFObjPath)
+	if err != nil {
+		return nil, err
+	}
 	C.set_print_fn()
 
 	opts := C.struct_bpf_object_open_opts{}
@@ -324,6 +333,7 @@ func NewModuleFromFileArgs(args NewModuleArgs) (*Module, error) {
 
 	return &Module{
 		obj: obj,
+		elf: f,
 	}, nil
 }
 
@@ -380,6 +390,7 @@ func (m *Module) Close() {
 		}
 	}
 	C.bpf_object__close(m.obj)
+	m.elf.Close()
 }
 
 func (m *Module) BPFLoadObject() error {
@@ -392,12 +403,33 @@ func (m *Module) BPFLoadObject() error {
 }
 
 // InitGlobalVariable init global variable (defined by .data, .data.<whatever>, .rodata or .rodata.<whatever> section) in bpf code
-func (m *Module) InitGlobalVariable(sectionName string, value unsafe.Pointer) error {
-	internalMap, err := m.GetMap(sectionName)
+func (m *Module) InitGlobalVariable(name string, value interface{}) error {
+	s, err := getGlobalVarSymbol(m.elf, name)
 	if err != nil {
 		return err
 	}
-	return internalMap.setInitialValue(value)
+	log.Println(s.Symbol)
+	log.Println(s.ByteOrder.String())
+	bpfMap, err := m.GetMap(s.Section.Name)
+	if err != nil {
+		return err
+	}
+
+	// get current value
+	currMapValue := bpfMap.getInitialValue()
+	newMapValue := make([]byte, bpfMap.ValueSize())
+	copy(newMapValue, currMapValue)
+
+	// generate new value
+	data := bytes.NewBuffer(nil)
+	if err := binary.Write(data, s.ByteOrder, value); err != nil {
+		return err
+	}
+	copy(newMapValue[s.Offset:s.Offset+len(data.Bytes())], data.Bytes())
+
+	// update new value
+	err = bpfMap.setInitialValue(unsafe.Pointer(&newMapValue[0]))
+	return err
 }
 
 // BPFMapCreateOpts mirrors the C structure bpf_map_create_opts
@@ -583,6 +615,10 @@ func (b *BPFMap) KeySize() int {
 	return int(C.bpf_map__key_size(b.bpfMap))
 }
 
+func (b *BPFMap) GetNextKey() {
+	// C.get_next_key(b.fd)
+}
+
 func (b *BPFMap) ValueSize() int {
 	return int(C.bpf_map__value_size(b.bpfMap))
 }
@@ -647,6 +683,17 @@ func (b *BPFMap) setInitialValue(value unsafe.Pointer) error {
 		return fmt.Errorf("failed to set inital value for map %s: %w", b.name, syscall.Errno(-ret))
 	}
 	return nil
+}
+
+func (b *BPFMap) getInitialValue() []byte {
+	value := make([]byte, b.ValueSize())
+	valuePtr := unsafe.Pointer(&value[0])
+	C.get_init_value(b.bpfMap, valuePtr)
+	return value
+}
+
+func (b *BPFMap) IsInternal() bool {
+	return bool(C.bpf_map__is_internal(b.bpfMap))
 }
 
 // BPFMapBatchOpts mirrors the C structure bpf_map_batch_opts.
