@@ -615,10 +615,6 @@ func (b *BPFMap) KeySize() int {
 	return int(C.bpf_map__key_size(b.bpfMap))
 }
 
-func (b *BPFMap) GetNextKey() {
-	// C.get_next_key(b.fd)
-}
-
 func (b *BPFMap) ValueSize() int {
 	return int(C.bpf_map__value_size(b.bpfMap))
 }
