@@ -420,6 +420,7 @@ func (m *Module) Close() {
 		}
 	}
 	C.bpf_object__close(m.obj)
+	m.elf.Close()
 }
 
 func (m *Module) BPFLoadObject() error {
@@ -428,12 +429,11 @@ func (m *Module) BPFLoadObject() error {
 		return fmt.Errorf("failed to load BPF object: %w", syscall.Errno(-ret))
 	}
 	m.loaded = true
-	m.elf.Close()
 
 	return nil
 }
 
-// InitGlobalVariable sets global variables (defined in .data or .rodata)
+// InitGlobalVariable sets global variables (defined in .data, .rodata or .bss)
 // in bpf code. It must be called before the BPF object is loaded.
 func (m *Module) InitGlobalVariable(name string, value interface{}) error {
 	if m.loaded {
@@ -469,6 +469,31 @@ func (m *Module) InitGlobalVariable(name string, value interface{}) error {
 	// save new value
 	err = bpfMap.setInitialValue(unsafe.Pointer(&newMapValue[0]))
 	return err
+}
+
+// GetGlobalVariableValue gets value of global variables (defined in .data, .rodata or .bss)
+// in bpf code. It must be called after the BPF object is loaded.
+func (m *Module) GetGlobalVariableValue(name string) ([]byte, error) {
+	if !m.loaded {
+		return nil, errors.New("must be called after the BPF object is loaded")
+	}
+	s, err := getGlobalVariableSymbol(m.elf, name)
+	if err != nil {
+		return nil, err
+	}
+	bpfMap, err := m.GetMap(s.sectionName)
+	if err != nil {
+		return nil, err
+	}
+
+	key := 0
+	currMapValue, err := bpfMap.GetValue(unsafe.Pointer(&key))
+	if err != nil {
+		return currMapValue, err
+	}
+	start := s.offset
+	end := s.offset + s.size
+	return currMapValue[start:end], nil
 }
 
 // BPFMapCreateOpts mirrors the C structure bpf_map_create_opts

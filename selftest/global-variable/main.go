@@ -93,6 +93,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	testV, err := bpfModule.GetGlobalVariableValue("test")
+	if err != nil {
+		exitWithErr(err)
+	}
+	var test Event
+	err = binary.Read(bytes.NewReader(testV), binary.LittleEndian, &test)
+	if err != nil {
+		exitWithErr(err)
+	}
+	if test.Sum == 0 {
+		fmt.Fprintf(os.Stderr, "GetGlobalVariableValue not work as expected")
+		os.Exit(1)
+	}
+
 	rb.Stop()
 	rb.Close()
 }

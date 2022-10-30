@@ -50,7 +50,7 @@ func getGlobalVariableSymbol(elf *elf.File, varName string) (*Symbol, error) {
 }
 
 func isGlobalVariableSection(sectionName string) bool {
-	if sectionName == ".data" || sectionName == ".rodata" {
+	if sectionName == ".data" || sectionName == ".rodata" || sectionName == ".bss" {
 		return true
 	}
 	if strings.HasPrefix(sectionName, ".data.") ||

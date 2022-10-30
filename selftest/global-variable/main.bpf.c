@@ -31,6 +31,8 @@ volatile int bar = 4;
 const volatile int baz SEC(".rodata.baz") = 5;
 const volatile int qux SEC(".data.qux") = 6;
 
+struct event_t test = {};
+
 long ringbuffer_flags = 0;
 
 SEC("kprobe/sys_mmap")
@@ -51,6 +53,8 @@ int kprobe__sys_mmap(struct pt_regs *ctx)
     }
 
     bpf_ringbuf_submit(event, ringbuffer_flags);
+
+    __sync_fetch_and_add(&test.sum, 1);
     return 1;
 }
 
