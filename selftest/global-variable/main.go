@@ -107,6 +107,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	t := uint64(time.Now().Unix())
+	test.Sum = t
+	if err := bpfModule.UpdateGlobalVariable("test", test); err != nil {
+		exitWithErr(err)
+	}
+	testV2, err := bpfModule.GetGlobalVariableValue("test")
+	if err != nil {
+		exitWithErr(err)
+	}
+	var test2 Event
+	err = binary.Read(bytes.NewReader(testV2), binary.LittleEndian, &test2)
+	if err != nil {
+		exitWithErr(err)
+	}
+	if test2.Sum != test.Sum {
+		fmt.Fprintf(os.Stderr, "UpdateGlobalVariable not work as expected, %d != %d", test2.Sum, test.Sum)
+		os.Exit(1)
+	}
+
 	rb.Stop()
 	rb.Close()
 }
