@@ -18,6 +18,8 @@ int libbpf_print_fn(enum libbpf_print_level level, const char *format,
   if (level > max_level)
     return 0;
 
+  fprintf(stderr, "[format]: %s\n", format);
+
   // NOTE: va_list args is managed in libbpf caller
   // however, these copies must be matched with va_end() in this function
   va_list exclusivity_check, cgroup_check;
