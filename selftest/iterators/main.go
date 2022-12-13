@@ -20,6 +20,7 @@ const (
 var one = 1
 
 func main() {
+	bpf.SetPrintLevel(bpf.LibbpfPrintLevelDebug)
 
 	bpfModule, err := bpf.NewModuleFromFile("main.bpf.o")
 	if err != nil {
