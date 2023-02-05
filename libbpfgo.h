@@ -131,15 +131,41 @@ int bpf_prog_detach_cgroup_legacy(
   return syscall(__NR_bpf, BPF_PROG_DETACH, &attr, sizeof(attr));
 }
 
-struct bpf_link *bpf_prog_attach_iter(struct bpf_program *prog, __u32 map_fd) {
+// https://lore.kernel.org/all/20220824233117.1312810-2-haoluo@google.com/
+#ifndef bpf_cgroup_iter_order
+enum bpf_cgroup_iter_order {
+  BPF_ITER_ORDER_UNSPEC = 0,
+  BPF_ITER_SELF_ONLY,        /* process only a single object. */
+  BPF_ITER_DESCENDANTS_PRE,  /* walk descendants in pre-order. */
+  BPF_ITER_DESCENDANTS_POST, /* walk descendants in post-order. */
+  BPF_ITER_ANCESTORS_UP,     /* walk ancestors upward. */
+};
+#define BPF_ITER_LINK_INFO_NO_CGROUP
+#endif
+
+// https://lore.kernel.org/bpf/20220926184957.208194-2-kuifeng@fb.com/
+#ifndef bpf_iter_task_type
+#define BPF_ITER_LINK_INFO_NO_TASK
+#endif
+
+struct bpf_link *bpf_prog_attach_iter(struct bpf_program *prog, __u32 map_fd,
+                                      enum bpf_cgroup_iter_order order,
+                                      __u32 cgroup_fd, __u64 cgroup_id,
+                                      __u32 tid, __u32 pid, __u32 pid_fd) {
   DECLARE_LIBBPF_OPTS(bpf_iter_attach_opts, opts);
   union bpf_iter_link_info linfo;
   memset(&linfo, 0, sizeof(linfo));
   linfo.map.map_fd = map_fd;
-  // upcoming libbpf v1.0.2 introduced a new member named 'cgroup'
-  // linfo.cgroup.order = order;
-  // linfo.cgroup.cgroup_fd = cgroup_fd;
-  // linfo.cgroup.cgroup_id = cgroup_id;
+#ifndef BPF_ITER_LINK_INFO_NO_CGROUP
+  linfo.cgroup.order = order;
+  linfo.cgroup.cgroup_fd = cgroup_fd;
+  linfo.cgroup.cgroup_id = cgroup_id;
+#endif
+#ifndef BPF_ITER_LINK_INFO_NO_TASK
+  linfo.task.tid = tid;
+  linfo.task.pid = pid;
+  linfo.task.pid_fd = pid_fd;
+#endif
   opts.link_info = &linfo;
   opts.link_info_len = sizeof(linfo);
 

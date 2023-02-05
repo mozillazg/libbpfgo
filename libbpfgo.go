@@ -1585,19 +1585,35 @@ func (p *BPFProg) AttachNetns(networkNamespacePath string) (*BPFLink, error) {
 	return bpfLink, nil
 }
 
+type BPFCgroupIterOrder uint32
+
+const (
+	BPFIterOrderUnspec BPFCgroupIterOrder = iota
+	BPFIterSelfOnly
+	BPFIterDescendantsPre
+	BPFIterDescendantsPost
+	BPFIterAncestorsUp
+)
+
 type IterOpts struct {
-	MapFd int
-	// CgroupIterOrder BPFCgroupIterOrder
-	// CgroupFd        int
-	// cGroupId        uint64
+	MapFd           int
+	CgroupIterOrder BPFCgroupIterOrder
+	CgroupFd        int
+	CGroupId        uint64
+	Tid             int
+	Pid             int
+	PidFd           int
 }
 
 func (p *BPFProg) AttachIter(opts IterOpts) (*BPFLink, error) {
 	mapFd := C.uint(opts.MapFd)
-	// cgroupIterOrder := C.uint(opts.CgroupIterOrder)
-	// cgroupFd := C.uint(opts.CgroupFd)
-	// cgroupId := C.ulonglong(opts.cGroupId)
-	link, errno := C.bpf_prog_attach_iter(p.prog, mapFd)
+	cgroupIterOrder := uint32(opts.CgroupIterOrder)
+	cgroupFd := C.uint(opts.CgroupFd)
+	cgroupId := C.ulonglong(opts.CGroupId)
+	tid := C.uint(opts.Tid)
+	pid := C.uint(opts.Pid)
+	pidFd := C.uint(opts.PidFd)
+	link, errno := C.bpf_prog_attach_iter(p.prog, mapFd, cgroupIterOrder, cgroupFd, cgroupId, tid, pid, pidFd)
 	if link == nil {
 		return nil, fmt.Errorf("failed to attach iter to program %s: %w", p.name, errno)
 	}
