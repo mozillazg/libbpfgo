@@ -43,8 +43,8 @@ CGO_LDFLAGS_DYN = "-lelf -lz -lbpf"
 
 # default == shared lib from OS package
 
-all: libbpfgo-dynamic
-test: libbpfgo-dynamic-test
+all: libbpfgo-static
+test: libbpfgo-static-test
 
 # libbpfgo test object
 
@@ -185,7 +185,7 @@ helpers-test-static-run: libbpfgo-static
 	CC=$(CLANG) \
 		CGO_CFLAGS=$(CGO_CFLAGS_STATIC) \
 		CGO_LDFLAGS=$(CGO_LDFLAGS_STATIC) \
-		sudo -E $(GO) test -v $(HELPERS)/...
+		sudo -E env PATH=$(PATH) $(GO) test -v $(HELPERS)/...
 
 helpers-test-dynamic-run: libbpfgo-dynamic
 	sudo $(GO) test -v $(HELPERS)/...
