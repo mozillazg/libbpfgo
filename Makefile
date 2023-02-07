@@ -126,6 +126,10 @@ $(LIBBPF_OBJ): $(LIBBPF_SRC) $(wildcard $(LIBBPF_SRC)/*.[ch]) | $(OUTPUT)/libbpf
 		OBJDIR=$(LIBBPF_OBJDIR) \
 		DESTDIR=$(LIBBPF_DESTDIR) \
 		INCLUDEDIR= LIBDIR= UAPIDIR= install
+# UAPI headers can be installed by a different package so they're not installed
+# in by install rule.
+	UAPIDIR=$(LIBBPF_DESTDIR)/uapi \
+		$(MAKE) -C $(LIBBPF_SRC) install_uapi_headers
 
 $(LIBBPF_SRC):
 ifeq ($(wildcard $@), )
