@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"syscall"
 
 	bpf "github.com/aquasecurity/libbpfgo"
 )
@@ -45,15 +47,19 @@ func main() {
 	}
 	defer reader.Close()
 
-	for i := 0; i < 10; i++ {
-		cmd := exec.Command("ping", "-w", "15", "bing.com")
+	totalExecs := 10
+	thisPid := syscall.Getpid()
+	pids := make(map[int]*os.Process, 0)
+	for i := 0; i < totalExecs; i++ {
+		cmd := exec.Command("ping", "-w", "15", "8.8.8.8")
 		err := cmd.Start()
 		if err != nil {
 			exitWithErr(err)
 		}
+		pids[cmd.Process.Pid] = cmd.Process
 	}
 
-	numberOfEventsReceived := 0
+	numberOfMatches := 0
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		fields := strings.Split(scanner.Text(), "\t")
@@ -61,14 +67,27 @@ func main() {
 			fmt.Fprintf(os.Stderr, "invalid data retrieved\n")
 		}
 		if fields[2] == "ping" {
-			numberOfEventsReceived++
+			ppid, err := strconv.Atoi(fields[0])
+			if err != nil {
+				exitWithErr(err)
+			}
+			pid, err := strconv.Atoi(fields[1])
+			if err != nil {
+				exitWithErr(err)
+			}
+			if proc, found := pids[pid]; found {
+				if ppid == thisPid {
+					numberOfMatches++
+					proc.Kill()
+				}
+			}
 		}
-		if numberOfEventsReceived > 5 {
+		if numberOfMatches == totalExecs {
 			break
 		}
 	}
-	if numberOfEventsReceived <= 5 {
-		err := fmt.Errorf("expect numberOfEventsReceived > 5 but got %d\n", numberOfEventsReceived)
+	if numberOfMatches != totalExecs {
+		err := fmt.Errorf("expect numberOfMatches == %d but got %d\n", totalExecs, numberOfMatches)
 		exitWithErr(err)
 	}
 }
