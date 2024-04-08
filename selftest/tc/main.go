@@ -61,6 +61,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
 	}
+	var existOpts bpf.TcOpts
+	if err := hook.Query(&existOpts); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
+	} else {
+		fmt.Println(existOpts)
+	}
 
 	eventsChannel := make(chan []byte)
 	rb, err := bpfModule.InitRingBuf("events", eventsChannel)
